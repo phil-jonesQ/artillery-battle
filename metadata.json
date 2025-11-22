@@ -1,0 +1,5 @@
+{
+  "name": "Heavy Artillery Sim",
+  "description": "A realistic artillery game with destructible terrain, physics, and an AI commentator powered by Gemini.",
+  "requestFramePermissions": []
+}
