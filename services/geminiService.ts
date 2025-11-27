@@ -1,13 +1,7 @@
-import { GoogleGenAI } from "@google/genai";
 import { TurnResult } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const MODEL_NAME = 'gemini-2.5-flash';
-
-// Circuit breaker: If we hit a quota limit, stop trying for the rest of the session.
-let isApiBlocked = false;
-
-const FALLBACK_BATTLE_NAMES = [
+// Standalone Dictionary for Battle Names
+const BATTLE_NAMES = [
     "Sector 7G",
     "Neon Wasteland",
     "Cyber Hills",
@@ -17,10 +11,21 @@ const FALLBACK_BATTLE_NAMES = [
     "Synthwave Valley",
     "Chromium Peaks",
     "Data Stream Delta",
-    "Null Void"
+    "Null Void",
+    "Iron Oxide Basin",
+    "Titan's Graveyard",
+    "Velocity Fields",
+    "Echo Summit",
+    "Rust Bucket Valley",
+    "Cobalt Cliffs",
+    "Silicon Dune",
+    "Vector Plateau",
+    "Midnight Range",
+    "Omega Outpost"
 ];
 
-const FALLBACK_COMMENTARY_HIT = [
+// Standalone Dictionary for Hit Commentary
+const COMMENTARY_HIT = [
     "Direct hit! That's gotta hurt.",
     "Boom! Target acquired.",
     "Precision strike confirmed.",
@@ -28,10 +33,18 @@ const FALLBACK_COMMENTARY_HIT = [
     "That will leave a mark.",
     "Armor integrity compromised.",
     "Ouch! Right in the CPU.",
-    "Devastating impact registered!"
+    "Devastating impact registered!",
+    "Bullseye! Textbooks will write about that one.",
+    "Target locked and rocked.",
+    "Clean connection. Enemy is reeling.",
+    "Maximum damage! The crowd goes wild.",
+    "Smoke em' if you got em'. Nice hit.",
+    "Kaboom! Physics works.",
+    "Structural damage imminent."
 ];
 
-const FALLBACK_COMMENTARY_MISS = [
+// Standalone Dictionary for Miss Commentary
+const COMMENTARY_MISS = [
     "Wide right! Recalculating...",
     "Missed by a mile.",
     "Wind shear threw it off.",
@@ -39,63 +52,43 @@ const FALLBACK_COMMENTARY_MISS = [
     "Close, but no cigar.",
     "Trajectory error detected.",
     "Is your targeting computer offline?",
-    "Clean miss. Try aiming next time."
+    "Clean miss. Try aiming next time.",
+    "Just shifting some dirt around.",
+    "Swing and a miss!",
+    "A warning shot, perhaps?",
+    "Terraforming complete. Now hit the tank.",
+    "Calculations were slightly off.",
+    "Whiff! The air pressure changed though.",
+    "No effect on target."
 ];
 
 const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
+/**
+ * Generates a random battle name from the local dictionary.
+ */
 export const generateBattleName = async (): Promise<string> => {
-  if (isApiBlocked) return getRandom(FALLBACK_BATTLE_NAMES);
-
-  try {
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: "Generate a cool, short, sci-fi name for a battlefield terrain. Maximum 4 words. Do not use quotes.",
-    });
-    return response.text.trim();
-  } catch (error: any) {
-    // Check for quota/resource exhausted error codes (usually 429)
-    if (error?.status === 429 || error?.code === 429 || error?.message?.includes('quota')) {
-        console.warn("Gemini API Quota Exceeded. Switching to offline mode.");
-        isApiBlocked = true;
-    } else {
-        console.warn("Gemini API unavailable:", error);
-    }
-    return getRandom(FALLBACK_BATTLE_NAMES);
-  }
+  // Simulate a tiny network delay for realism in the UI loading state
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return getRandom(BATTLE_NAMES);
 };
 
+/**
+ * Generates commentary based on turn result using local dictionaries.
+ */
 export const generateCommentary = async (turnResult: TurnResult, wind: number): Promise<string> => {
-  const fallback = turnResult.missed ? getRandom(FALLBACK_COMMENTARY_MISS) : getRandom(FALLBACK_COMMENTARY_HIT);
-  
-  if (isApiBlocked) return fallback;
+  // Simulate a tiny delay
+  await new Promise(resolve => setTimeout(resolve, 300));
 
-  try {
-    const prompt = `
-      You are a sarcastic, witty sports commentator for a futuristic artillery tank game.
-      
-      Situation:
-      Shooter: ${turnResult.shooterName}
-      Wind: ${wind.toFixed(2)} (Positive is right, Negative is left)
-      Result: ${turnResult.missed ? 'MISSED!' : `HIT Player ${turnResult.hitPlayerId} for ${turnResult.damage} damage!`}
-      ${turnResult.missed ? `Projectile landed approx ${Math.floor(turnResult.distanceFromTarget || 0)} units away from the enemy.` : ''}
-      
-      Write a ONE sentence comment about this shot. Be funny but concise.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        maxOutputTokens: 50,
+  if (turnResult.missed) {
+      return getRandom(COMMENTARY_MISS);
+  } else {
+      // Dynamic string interpolation for hits
+      const baseComment = getRandom(COMMENTARY_HIT);
+      // Occasional specific damage callout
+      if (Math.random() > 0.7) {
+          return `Hit for ${turnResult.damage} damage! ${baseComment}`;
       }
-    });
-    return response.text.trim();
-  } catch (error: any) {
-     if (error?.status === 429 || error?.code === 429 || error?.message?.includes('quota')) {
-        console.warn("Gemini API Quota Exceeded. Switching to offline mode.");
-        isApiBlocked = true;
-     }
-     return fallback;
+      return baseComment;
   }
 };
